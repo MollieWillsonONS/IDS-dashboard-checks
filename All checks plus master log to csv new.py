@@ -5,7 +5,7 @@ Created on Wed Jan 10 11:15:59 2024
 @author: willsm
 """
 
-#import warnings; warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
+import warnings; warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
 
 import pandas as pd
 from datetime import datetime
@@ -146,11 +146,17 @@ gcp_names = dataset_series['Dataset Resource'].iloc[7:].dropna()
 contains_capital_letters = any(char.isupper() for gcp_name in gcp_names for char in gcp_name)
 contains_spaces = any(char.isspace() for gcp_name in gcp_names for char in gcp_name)
 starts_with_number = any(char.isdigit() for gcp_name in gcp_names for char in gcp_name)
+leading_trailing_spaces = any(gcp_name.strip() != gcp_name for gcp_name in gcp_names)
 
-if not contains_capital_letters and not contains_spaces and not starts_with_number:
+
+if not contains_capital_letters and not leading_trailing_spaces and not starts_with_number:
     print("CHECK 4 PASSED: All GCP names follow the naming standards.")
 else:
-    error_rows_check4 = gcp_names[(gcp_names.str.contains(r'[A-Z]')) | (gcp_names.str.contains(r'\s')) | (gcp_names.str.match(r'^\d'))].index.tolist()
+    error_rows_check4 = gcp_names[(gcp_names.str.contains(r'[A-Z]')) | (gcp_names.str.match(r'^\d'))].index.tolist()
+    
+    # Check for leading or trailing spaces and update error_rows_check4 accordingly
+    error_rows_check4 += [index for index, gcp_name in gcp_names.items() if gcp_name.strip() != gcp_name]
+    
     print(f"CHECK 4 FAILED: Some GCP names do not conform to the naming standards. Error occurred in row(s): {error_rows_check4}")
 
 reference = generate_unique_reference()
