@@ -10,6 +10,7 @@ Created on Wed Jan 10 11:15:59 2024
 import pandas as pd
 from datetime import datetime
 import os
+import re
 
 # Function to generate a unique reference
 def generate_unique_reference():
@@ -155,6 +156,19 @@ else:
 reference = generate_unique_reference()
 date_submitted = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
+# CHECK 5 - Verify that the lists in the search keywords cell are comma-separated and contain only letters, commas and spaces.
+error_rows_check5 = None
+cell_value = df['Dataset Resource'].at[16, 'Value']
+
+# Defining a regular expression pattern for valid content (letters, commas and spaces)
+valid_pattern = re.compile(r'^[a-zA-Z, ]+$')
+
+if valid_pattern.match(cell_value):
+    print("CHECK 5 PASSED: The specified cell is formatted correctly.")
+else:
+    error_rows_check5 = [16] 
+    print(f"CHECK 5 FAILED: The specified cell contains invalid content. Error occurred in row(s): {error_rows_check5}")
+
 
 # Log results for Check 1
 log_results_to_csv(
@@ -217,4 +231,20 @@ log_results_to_csv(
     "Pass" if not error_rows_check4 else "Fail",
     error_description_check4,
     str(error_rows_check4) if error_rows_check4 else None
+)
+
+# Log results for Check 5
+error_description_check5 = "The specified cell contains invalid content" if error_rows_check5 else None
+log_results_to_csv(
+    reference,
+    date_submitted,
+    data_creator,
+    dataset_resource_name,
+    gcp_dataset_name,
+    business_catalogue_identifier,
+    5,  
+    "Keywords list formatted correctly",
+    "Pass" if not error_rows_check5 else "Fail",
+    error_description_check5,
+    str(error_rows_check5) if error_rows_check5 else None
 )
