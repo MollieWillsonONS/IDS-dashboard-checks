@@ -1,20 +1,40 @@
 # -*- coding: utf-8 -*-
 """
+This script performs a series of checks on Excel files located in a specified directory to ensure data consistency and adherence to naming standards. Results of each check are logged into a master log CSV file, and files are moved to separate directories based on the outcome of the checks (successful or failed).
 
+Author: Mollie Willson (mollie.willson@ons.gov.uk)
+Date: Jan 2024
 
-Created on Wed Jan 10 11:15:59 2024
+Dependencies:
+    - pandas: For data manipulation and analysis.
+    - datetime: For generating timestamps and formatting dates.
+    - os: For operating system-related functions such as file manipulation.
+    - re: For regular expression pattern matching.
+    - glob: For searching directories using wildcard patterns.
+    - shutil: For file operations like moving files between directories.
 
-@author: willsm
+Usage:
+    Ensure that the necessary libraries are installed.
+    Set the directory paths for Excel files, successful submissions, and failed submissions.
+    Run the script to perform the checks and log results.
+    
+Note:
+    - It's recommended to review the code comments for detailed explanations of each check and functionality.
+    - Customise the directory paths according to your specific file organisation.
+    - Ensure that Excel files in the specified directory follow the expected format for accurate checks and results logging.
 """
 
-import warnings; warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
-
+# Importing libraries
 import pandas as pd
 from datetime import datetime
 import os
 import re
 import glob
 import shutil
+
+# Kept getting warnings so this hides them
+import warnings; warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl") 
+
 
 # Defining the directory where Excel files are located
 directory = r'C:\Users\willsm\scripts\architectproj\IDS-dashboard-checks\ids_submissions'
@@ -26,12 +46,13 @@ failure_directory = r'C:\Users\willsm\scripts\architectproj\IDS-dashboard-checks
 # Use glob to find all Excel files in the directory
 xlsx_files = glob.glob(os.path.join(directory, '*.xlsx'))
 
-# Function to generate a unique reference
+# Function to generate a unique reference based on current timestamp 
 def generate_unique_reference():
     return f"REF-{datetime.now().strftime('%Y%m%d%H%M%S')}"
 
 # Function to log results to a master log CSV file
 def log_results_to_csv(reference, date_submitted, data_creator, dataset_resource_name, gcp_dataset_name, business_catalogue_identifier, check_number, check_name, result, error_description=None, error_rows=None):
+    # Creating a dataframe with various columns representing the log data
     log_df = pd.DataFrame({
         'Unique Reference': [reference],
         'Date Submitted': [date_submitted],
@@ -46,16 +67,17 @@ def log_results_to_csv(reference, date_submitted, data_creator, dataset_resource
         'Error Rows': [error_rows]
     })
 
-    # Check if the master log file exists, if not create it, else append to it
+    # Checks if the master log file exists, if not it creates it. If it does exist it appends it.
     if not os.path.isfile('master_log.csv'):
         log_df.to_csv('master_log.csv', index=False)
     else:
         log_df.to_csv('master_log.csv', mode='a', header=False, index=False)
 
-# Iterate over each Excel file found
+# Iterates over each Excel file found
 for file_path in xlsx_files:
-    # Read the Excel file
+    # Reads in the Excel file and creates dataframes
     df = pd.read_excel(file_path, sheet_name=None)
+    # Reads in dataset series sheet separately as needs to skip the first row
     dataset_series = pd.read_excel(file_path, sheet_name='Dataset Series', skiprows=1)
 
     # Creating dataframes for the rest of the sheets
@@ -72,8 +94,8 @@ for file_path in xlsx_files:
 
     
     # CHECK 1 - GCP BigQuery Dataset name must match across the dataset resource and dataset series tab. 
-
-    error_rows_check1 = None
+    
+    error_rows_check1 = None # This variable is initialised as None to indicate that there are initially no error rows identified in the dataset series.
     # identifying cell that we want to check is the same as in the dataset resource column in the dataset_series dataframe
     gcp_name_cell = df['Dataset Resource'].at[44, 'Value']
     match_all_rows = all(dataset_series['Dataset Resource'].iloc[7:] == gcp_name_cell)
@@ -175,8 +197,8 @@ for file_path in xlsx_files:
     error_rows_check5 = None
     cell_value = df['Dataset Resource'].at[16, 'Value']
 
-    # Defining a regular expression pattern for valid content (letters, commas and spaces)
-    valid_pattern = re.compile(r'^[a-zA-Z, ]+$')
+    #Defining a regular expression pattern for valid content (letters, commas, spaces, and each new keyword starting with a capital letter)
+    valid_pattern = re.compile(r'^[A-Z][a-zA-Z]*(?:,\s*[A-Z][a-zA-Z]*)*$')
 
     if valid_pattern.match(cell_value):
         print("CHECK 5 PASSED: The keywords list is formatted correctly.")
